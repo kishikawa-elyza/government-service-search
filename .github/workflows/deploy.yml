@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   deploy:
@@ -18,8 +24,10 @@ jobs:
           node-version: '16'
 
       - name: Replace API Key
+        env:
+          DIFY_API_KEY: ${{ secrets.DIFY_API_KEY }}
         run: |
-          sed -i 's/YOUR_API_KEY/${{ secrets.DIFY_API_KEY }}/g' index.html
+          sed -i "s/const DIFY_API_KEY = 'YOUR_API_KEY'/const DIFY_API_KEY = '${{ secrets.DIFY_API_KEY }}'/g" index.html
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
