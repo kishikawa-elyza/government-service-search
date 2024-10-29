@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>日本の行政サービス・施策検索</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <!-- faviconエラーを防ぐためのlink追加 -->
+    <link rel="icon" href="data:,">
     <style>
         .loading {
             display: none;
@@ -241,7 +243,7 @@
 
     <script>
         // APIキーの設定
-        const DIFY_API_KEY = 'YOUR_API_KEY'; // GitHub Actionsで置換される
+        const DIFY_API_KEY = 'YOUR_API_KEY';
         const DIFY_API_URL = 'https://api.dify.ai/v1/chat-messages';
 
         // 都道府県データ
@@ -370,65 +372,72 @@
         }
 
         // フォーム送信処理
-        document.getElementById('searchForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+    document.getElementById('searchForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const form = e.target;
+        
+        // すべてのフォーム値を取得
+        const formData = {
+            年齢: form.age.value,
+            性別: form.querySelector('input[name="gender"]:checked')?.value,
+            最終学歴: form.education.value,
+            就業状態: form.employmentStatus.value,
+            居住形態: form.livingArrangement.value,
+            居住地域_都道府県: form.prefecture.value,
+            居住地域_市区町村: form.city.value,
+            世帯年収: form.income.value,
+            婚姻状況: form.maritalStatus.value,
+            扶養家族: form.querySelector('input[name="dependents"]:checked')?.value
+        };
+
+        // 必須項目のチェック
+        if (!formData.年齢 || !formData.性別 || !formData.最終学歴 || 
+            !formData.就業状態 || !formData.居住地域_都道府県) {
+            showError('必須項目を入力してください。');
+            return;
+        }
+
+        // 検索クエリの作成
+        const query = `
+            以下の条件に該当する行政サービスや施策を教えてください：
+            {
+                "年齢": "${formData.年齢}",
+                "性別": "${formData.性別}",
+                "最終学歴": "${formData.最終学歴}",
+                "就業状態": "${formData.就業状態}",
+                "居住形態": "${formData.居住形態}",
+                "居住地域_都道府県": "${formData.居住地域_都道府県}",
+                "居住地域_市区町村": "${formData.居住地域_市区町村 || ''}",
+                "世帯年収": "${formData.世帯年収}",
+                "婚姻状況": "${formData.婚姻状況}",
+                "扶養家族": "${formData.扶養家族}"
+            }
+        `;
+
+        // デバッグ用のログ出力
+        console.log('Form Data:', formData);
+        console.log('Query:', query);
+
+        // ローディング表示
+        showLoading(true);
+        hideError();
+        hideResult();
+
+        try {
+            debugApiRequest(query);
+            const response = await sendToDify(query);
             
-            const form = e.target;
-            const formData = {
-                年齢: form.age.value,
-                性別: form.gender.value,
-                最終学歴: form.education.value,
-                就業状態: form.employmentStatus.value,
-                居住形態: form.livingArrangement.value,
-                居住地域_都道府県: form.prefecture.value,
-                居住地域_市区町村: form.city.value,
-                世帯年収: form.income.value,
-                婚姻状況: form.maritalStatus.value,
-                扶養家族: form.dependents.value
-            };
-
-            // 入力チェック
-            if (!age || !gender || !lifeStage || !occupation || !prefecture) {
-                showError('すべての項目を入力してください。');
-                return;
+            if (response && response.answer) {
+                showResult(response);
             }
-
-            // 検索クエリの作成
-            const query = `
-                {
-                "年齢": ${age},
-                "性別": ${gender},
-                "最終学歴": ${education},
-                "就業状態": ${employmentStatus},
-                "居住形態": ${livingArrangement},
-                "居住地域_都道府県": ${prefecture},
-                "居住地域_市区町村": ${city},
-                "世帯年収": ${income},
-                "婚姻状況": ${maritalStatus},
-                "扶養家族": ${dependents}
-                }
-            `;
-
-            // ローディング表示
-            showLoading(true);
-            hideError();
-            hideResult();
-
-            try {
-                // デバッグ情報の表示
-                debugApiRequest(query);
-
-                const response = await sendToDify(query);
-                if (response && response.answer) {
-                    showResult(response);
-                }
-            } catch (error) {
-                console.error('Error details:', error);
-                showError(`検索中にエラーが発生しました: ${error.message}`);
-            } finally {
-                showLoading(false);
-            }
-        });
-    </script>
+        } catch (error) {
+            console.error('Error details:', error);
+            showError(`検索中にエラーが発生しました: ${error.message}`);
+        } finally {
+            showLoading(false);
+        }
+    });
+</script>
 </body>
 </html>
